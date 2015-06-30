@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repo:meta xmlns="http://exist-db.org/xquery/repo" xmlns:repo="http://exist-db.org/xquery/repo">
+    <repo:description>@app.title@</repo:description>
+    <repo:author>tobias AT existsolutions.com</repo:author>
+    <!-- Todo add authors -->
+    <repo:website>http://www.exist-db.com</repo:website>
+    <repo:status>alpha</repo:status>
+    <repo:license>GPL</repo:license>
+    <repo:copyright>true</repo:copyright>
+    <repo:type>libary</repo:type>
+</repo:meta>

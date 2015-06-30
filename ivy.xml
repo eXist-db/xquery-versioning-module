@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+    <info organisation="com.existsolutions" module="imagemagick.xq"/>
+    <configurations>
+        <conf name="compile" description="Jars which are need at compile time"/>
+    </configurations>
+    <dependencies>
+        <dependency org="org.exist-db" name="existdb-core" rev="2.3-SNAPSHOT-20150630" conf="compile->default"/>
+    </dependencies>
+</ivy-module>

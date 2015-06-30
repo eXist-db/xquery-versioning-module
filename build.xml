@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="imagemagick.xq" id="imagemagick.xq" default="xar" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+    <xmlproperty file="build.properties.xml" semanticAttributes="true" keepRoot="false"/>
+
+    <target name="resolve" description="Use ivy to resolve classpaths">
+        <ivy:resolve/>
+        <ivy:cachepath pathid="default.classpath"/>
+        <ivy:retrieve conf="compile" pattern="build/lib/[artifact].[ext]"/>
+    </target>
+
+
+    <target name="compile" description="build java classes" depends="resolve">
+        <pathconvert property="expanded.class.path" refid="default.classpath"/>
+
+        <mkdir dir="build/classes"/>
+        <javac srcdir="src/main/java" destdir="build/classes">
+            <classpath refid="default.classpath" />
+        </javac>
+
+        <jar destfile="build/xar/content/${app.name}-${app.version}.jar"
+             basedir="build/classes"
+             excludes="**/Test.class"
+        />
+    </target>
+
+    <target name="xar" depends="compile">
+        <filter token="app.name" value="${app.name}"/>
+        <filter token="app.version" value="${app.version}"/>
+        <filter token="app.title" value="${app.title}"/>
+        <filter token="app.abbrev" value="${app.name}"/>
+
+        <copy file="src/main/resources/exist.xml" tofile="build/xar/exist.xml" filtering="true" overwrite="true"/>
+        <copy file="src/main/resources/expath-pkg.xml" tofile="build/xar/expath-pkg.xml" filtering="true" overwrite="true"/>
+        <copy file="src/main/resources/repo.xml" tofile="build/xar/repo.xml" filtering="true" overwrite="true"/>
+
+        <zip basedir="build/xar" destfile="build/${app.name}-${app.version}.xar"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+</project>
