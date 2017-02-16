@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://expath.org/ns/pkg" name="http://existsolutions.com/xquery/@app.name@" abbrev="@app.abbrev@" version="@app.version@" spec="1.0">
-    <title>@app.title@</title>
-    <dependency processor="http://exist-db.org" semver-min="2.3.0"/>
-</package>

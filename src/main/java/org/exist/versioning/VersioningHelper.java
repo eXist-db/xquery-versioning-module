@@ -1,29 +1,28 @@
-/*
- *  eXist Open Source Native XML Database
- *  Copyright (C) 2001-07 The eXist Project
- *  http://exist-db.org
+/**
+ * Versioning Module for eXist-db XQuery
+ * Copyright (C) 2008 eXist-db <exit-open@lists.sourceforge.net>
+ * http://exist-db.org
  *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 1, or (at your option)
+ * any later version.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Lesser General Public License for more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * $Id$
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 package org.exist.versioning;
 
 import org.exist.security.PermissionDeniedException;
 import org.exist.security.xacml.AccessContext;
 import org.exist.source.StringSource;
+import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.XQueryPool;
 import org.exist.xmldb.XmldbURI;
@@ -77,87 +76,116 @@ public class VersioningHelper {
     
     private final static StringSource GET_BASE_REV_FOR_KEY_SOURCE = new StringSource(GET_BASE_REV_FOR_KEY);
     
-    public static long getCurrentRevision(DBBroker broker, XmldbURI docPath) throws XPathException, IOException, PermissionDeniedException {
-        String docName = docPath.lastSegment().toString();
-        XmldbURI collectionPath = docPath.removeLastSegment();
-        XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
-        XQuery xquery = broker.getXQueryService();
-        XQueryPool pool = xquery.getXQueryPool();
-        XQueryContext context;
-        CompiledXQuery compiled = pool.borrowCompiledXQuery(broker, GET_CURRENT_REV_SOURCE);
-        if(compiled == null)
-                context = xquery.newContext(AccessContext.VALIDATION_INTERNAL);
-            else
-                context = compiled.getContext();
+    public static long getCurrentRevision(final DBBroker broker, final XmldbURI docPath)
+            throws XPathException, IOException, PermissionDeniedException {
+        final String docName = docPath.lastSegment().toString();
+        final XmldbURI collectionPath = docPath.removeLastSegment();
+        final XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
+
+        final BrokerPool brokerPool = broker.getBrokerPool();
+        final XQuery xquery = brokerPool.getXQueryService();
+        final XQueryPool xqueryPool = brokerPool.getXQueryPool();
+        CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_CURRENT_REV_SOURCE);
+        final XQueryContext context;
+        if(compiled == null) {
+            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+        } else {
+            context = compiled.getContext();
+        }
         context.declareVariable("collection", path.toString());
         context.declareVariable("document", docName);
-        if(compiled == null)
-            compiled = xquery.compile(context, GET_CURRENT_REV_SOURCE);
+        if(compiled == null) {
+            compiled = xquery.compile(broker, context, GET_CURRENT_REV_SOURCE);
+        } else {
+            compiled.getContext().updateContext(context);
+            context.getWatchDog().reset();
+        }
+
         try {
-            Sequence s = xquery.execute(compiled, Sequence.EMPTY_SEQUENCE);
-            if (s.isEmpty())
+            final Sequence s = xquery.execute(broker, compiled, Sequence.EMPTY_SEQUENCE);
+            if (s.isEmpty()) {
                 return 0;
-            IntegerValue iv = (IntegerValue) s.itemAt(0);
+            }
+            final IntegerValue iv = (IntegerValue) s.itemAt(0);
             return iv.getLong();
         } finally {
-            pool.returnCompiledXQuery(GET_CURRENT_REV_SOURCE, compiled);
+            xqueryPool.returnCompiledXQuery(GET_CURRENT_REV_SOURCE, compiled);
         }
     }
 
-    public static boolean newerRevisionExists(DBBroker broker, XmldbURI docPath, long baseRev, String key) throws XPathException, IOException, PermissionDeniedException {
-        String docName = docPath.lastSegment().toString();
-        XmldbURI collectionPath = docPath.removeLastSegment();
-        XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
-        XQuery xquery = broker.getXQueryService();
-        XQueryPool pool = xquery.getXQueryPool();
-        XQueryContext context;
-        CompiledXQuery compiled = pool.borrowCompiledXQuery(broker, GET_CONFLICTING_REV_SOURCE);
-        if(compiled == null)
-            context = xquery.newContext(AccessContext.VALIDATION_INTERNAL);
-        else
+    public static boolean newerRevisionExists(final DBBroker broker, final XmldbURI docPath, final long baseRev,
+            final String key) throws XPathException, IOException, PermissionDeniedException {
+        final String docName = docPath.lastSegment().toString();
+        final XmldbURI collectionPath = docPath.removeLastSegment();
+        final XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
+
+        final BrokerPool brokerPool = broker.getBrokerPool();
+        final XQuery xquery = brokerPool.getXQueryService();
+        final XQueryPool xqueryPool = brokerPool.getXQueryPool();
+        final XQueryContext context;
+        CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_CONFLICTING_REV_SOURCE);
+        if(compiled == null) {
+            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+        } else {
             context = compiled.getContext();
+        }
         context.declareVariable("collection", path.toString());
         context.declareVariable("document", docName);
         context.declareVariable("base", new IntegerValue(baseRev));
         context.declareVariable("key", key);
-        if(compiled == null)
-            compiled = xquery.compile(context, GET_CONFLICTING_REV_SOURCE);
+        if(compiled == null) {
+            compiled = xquery.compile(broker, context, GET_CONFLICTING_REV_SOURCE);
+        } else {
+            compiled.getContext().updateContext(context);
+            context.getWatchDog().reset();
+        }
+
         try {
-            Sequence s = xquery.execute(compiled, Sequence.EMPTY_SEQUENCE);
+            final Sequence s = xquery.execute(broker, compiled, Sequence.EMPTY_SEQUENCE);
             return !s.isEmpty();
         } finally {
-            pool.returnCompiledXQuery(GET_CONFLICTING_REV_SOURCE, compiled);
+            xqueryPool.returnCompiledXQuery(GET_CONFLICTING_REV_SOURCE, compiled);
         }
     }
 
-    public static long getBaseRevision(DBBroker broker, XmldbURI docPath, long baseRev, String sessionKey) throws XPathException, IOException, PermissionDeniedException {
-        String docName = docPath.lastSegment().toString();
-        XmldbURI collectionPath = docPath.removeLastSegment();
-        XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
-        XQuery xquery = broker.getXQueryService();
-        XQueryPool pool = xquery.getXQueryPool();
-        XQueryContext context;
-        CompiledXQuery compiled = pool.borrowCompiledXQuery(broker, GET_BASE_REV_FOR_KEY_SOURCE);
-        if(compiled == null)
-            context = xquery.newContext(AccessContext.VALIDATION_INTERNAL);
-        else
+    public static long getBaseRevision(final DBBroker broker, final XmldbURI docPath, final long baseRev,
+        final String sessionKey) throws XPathException, IOException, PermissionDeniedException {
+        final String docName = docPath.lastSegment().toString();
+        final XmldbURI collectionPath = docPath.removeLastSegment();
+        final XmldbURI path = VersioningTrigger.VERSIONS_COLLECTION.append(collectionPath);
+
+        final BrokerPool brokerPool = broker.getBrokerPool();
+        final XQuery xquery = brokerPool.getXQueryService();
+        final XQueryPool xqueryPool = brokerPool.getXQueryPool();
+        final XQueryContext context;
+        CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_BASE_REV_FOR_KEY_SOURCE);
+        if (compiled == null) {
+            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+        } else {
             context = compiled.getContext();
+        }
         context.declareVariable("collection", path.toString());
         context.declareVariable("document", docName);
         context.declareVariable("base", new IntegerValue(baseRev));
         context.declareVariable("key", sessionKey);
 
-        if(compiled == null)
-            compiled = xquery.compile(context, GET_BASE_REV_FOR_KEY_SOURCE);
-        try {
-            Sequence s = xquery.execute(compiled, Sequence.EMPTY_SEQUENCE);
-            if (s.isEmpty())
-                return 0;
+        if (compiled == null) {
+            compiled = xquery.compile(broker, context, GET_BASE_REV_FOR_KEY_SOURCE);
+        } else {
+            compiled.getContext().updateContext(context);
+            context.getWatchDog().reset();
+        }
 
-            IntegerValue iv = (IntegerValue) s.itemAt(0);
-            return iv.getLong();
+        try {
+            final Sequence s = xquery.execute(broker, compiled, Sequence.EMPTY_SEQUENCE);
+            if (s.isEmpty()) {
+                return 0;
+            } else {
+                final IntegerValue iv = (IntegerValue) s.itemAt(0);
+                return iv.getLong();
+            }
         } finally {
-            pool.returnCompiledXQuery(GET_BASE_REV_FOR_KEY_SOURCE, compiled);
+            xqueryPool.returnCompiledXQuery(GET_BASE_REV_FOR_KEY_SOURCE, compiled);
         }
     }
 }

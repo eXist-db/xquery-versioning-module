@@ -1,23 +1,21 @@
-/*
- *  eXist Open Source Native XML Database
- *  Copyright (C) 2001-07 The eXist Project
- *  http://exist-db.org
+/**
+ * Versioning Module for eXist-db XQuery
+ * Copyright (C) 2008 eXist-db <exit-open@lists.sourceforge.net>
+ * http://exist-db.org
  *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 1, or (at your option)
+ * any later version.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Lesser General Public License for more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * $Id$
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 package org.exist.versioning;
 
@@ -49,9 +47,7 @@ import org.xml.sax.SAXException;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Patch a given source document by applying a diff in eXist's diff format.
@@ -77,7 +73,7 @@ public class Patch {
     private Map<NodeId, ElementImpl> appendedNodes = null;
 
     private boolean annotate = false;
-    private Stack<QName> elementStack = null;
+    private Deque<QName> elementStack = null;
 
     private NewArrayNodeSet changeSet = null;
     private DocumentImpl diffDoc;
@@ -148,7 +144,7 @@ public class Patch {
 
     public void annotate(ExtendedXMLStreamReader reader, Receiver receiver) throws DiffException {
         annotate = true;
-        elementStack = new Stack<QName>();
+        elementStack = new ArrayDeque<>();
         buildChangeSet();
         try {
             NodeId skipSubtree = null;
@@ -212,7 +208,7 @@ public class Patch {
                             receiver.attribute(qname, reader.getAttributeValue(i));
                         }
                     } else if ("comment".equals(reader.getLocalName())) {
-                        StringBuffer buf = new StringBuffer();
+                        StringBuilder buf = new StringBuilder();
                         while (reader.hasNext()) {
                             status = reader.next();
                             if (status == XMLStreamReader.END_ELEMENT &&
@@ -338,14 +334,14 @@ public class Patch {
         }
     }
 
-    private void parseDiff(DBBroker broker, DocumentImpl doc) throws XPathException {
-        deletedNodes = new TreeMap<NodeId, String>();
-        insertedNodes = new TreeMap<NodeId, ElementImpl>();
-        appendedNodes = new TreeMap<NodeId, ElementImpl>();
-        XQuery service = broker.getXQueryService();
+    private void parseDiff(final DBBroker broker, final DocumentImpl doc) throws XPathException {
+        deletedNodes = new TreeMap<>();
+        insertedNodes = new TreeMap<>();
+        appendedNodes = new TreeMap<>();
+        XQuery service = broker.getBrokerPool().getXQueryService();
         Sequence changes;
 		try {
-			changes = service.execute("declare namespace v=\"http://exist-db.org/versioning\";" +
+			changes = service.execute(broker, "declare namespace v=\"http://exist-db.org/versioning\";" +
 			        "doc('" + doc.getURI().toString() + "')/v:version/v:diff/*",
 			        Sequence.EMPTY_SEQUENCE, AccessContext.TEST);
 		} catch (PermissionDeniedException e) {

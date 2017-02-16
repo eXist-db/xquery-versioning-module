@@ -1,3 +1,22 @@
+/**
+ * Versioning Module for eXist-db XQuery
+ * Copyright (C) 2008 eXist-db <exit-open@lists.sourceforge.net>
+ * http://exist-db.org
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 1, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
 package org.exist.versioning;
 
 import bmsi.util.Diff;
@@ -34,19 +53,19 @@ public class StandardDiff implements org.exist.versioning.Diff {
     
     private final static QName DIFF_ELEMENT = new QName("diff", NAMESPACE, PREFIX);
 
-    private DBBroker broker;
+    private final DBBroker broker;
 
     private List<Difference> changes = null;
 
-    public StandardDiff(DBBroker broker) {
+    public StandardDiff(final DBBroker broker) {
         this.broker = broker;
     }
 
-    public void diff(DocumentImpl docA, DocumentImpl docB)
-    throws DiffException {
+    @Override
+    public void diff(final DocumentImpl docA, final DocumentImpl docB) throws DiffException {
         try {
-            DiffNode[] nodesA = getNodes(broker, docA);
-            DiffNode[] nodesB = getNodes(broker, docB);
+            final DiffNode[] nodesA = getNodes(broker, docA);
+            final DiffNode[] nodesB = getNodes(broker, docB);
 
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Source:");
@@ -55,32 +74,30 @@ public class StandardDiff implements org.exist.versioning.Diff {
                 debugNodes(nodesB);
             }
 
-            Diff diff = new Diff(nodesA, nodesB);
-            Diff.change script = diff.diff_2(false);
-            changes = getChanges(script, docA, docB, nodesA, nodesB);
-        } catch (XMLStreamException e) {
-            throw new DiffException(e.getMessage(), e);
-        } catch (IOException e) {
+            final Diff diff = new Diff(nodesA, nodesB);
+            final Diff.change script = diff.diff_2(false);
+            this.changes = getChanges(script, docA, docB, nodesA, nodesB);
+        } catch (final XMLStreamException | IOException e) {
             throw new DiffException(e.getMessage(), e);
         }
     }
 
-    private void debugNodes(DiffNode[] nodes) {
-        StringBuffer buf = new StringBuffer();
+    private void debugNodes(final DiffNode[] nodes) {
+        final StringBuilder buf = new StringBuilder();
         buf.append('\n');
         for (int i = 0; i < nodes.length; i++) {
-            DiffNode node = nodes[i];
+            final DiffNode node = nodes[i];
             buf.append(Integer.toString(i)).append(' ').append(node.toString()).append('\n');
         }
         LOG.trace(buf.toString());
     }
 
+    @Override
     public String diff2XML() throws DiffException {
-        try {
-            StringWriter writer = new StringWriter();
-            SAXSerializer sax = (SAXSerializer) SerializerPool.getInstance().borrowObject(
+        try(final StringWriter writer = new StringWriter()) {
+            final SAXSerializer sax = (SAXSerializer) SerializerPool.getInstance().borrowObject(
                     SAXSerializer.class);
-            Properties outputProperties = new Properties();
+            final Properties outputProperties = new Properties();
             outputProperties.setProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
             outputProperties.setProperty(OutputKeys.INDENT, "no");
             sax.setOutput(writer, outputProperties);
@@ -88,7 +105,7 @@ public class StandardDiff implements org.exist.versioning.Diff {
             diff2XML(sax);
             sax.endDocument();
             return writer.toString();
-        } catch (SAXException e) {
+        } catch (final IOException | SAXException e) {
             throw new DiffException("error while serializing diff: " + e.getMessage(), e);
         }
     }

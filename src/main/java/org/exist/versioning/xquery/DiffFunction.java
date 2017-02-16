@@ -1,23 +1,21 @@
-/*
- *  eXist Open Source Native XML Database
- *  Copyright (C) 2001-07 The eXist Project
- *  http://exist-db.org
+/**
+ * Versioning Module for eXist-db XQuery
+ * Copyright (C) 2008 eXist-db <exit-open@lists.sourceforge.net>
+ * http://exist-db.org
  *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 1, or (at your option)
+ * any later version.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Lesser General Public License for more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * $Id$
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 package org.exist.versioning.xquery;
 
@@ -61,41 +59,41 @@ public class DiffFunction extends BasicFunction {
                     new SequenceType( Type.NODE, Cardinality.EXACTLY_ONE )
             );
 
-    public DiffFunction(XQueryContext context) {
+    public DiffFunction(final XQueryContext context) {
         super(context, signature);
     }
 
-    public Sequence eval(Sequence[] args, Sequence contextSequence) throws XPathException {
-        NodeValue nv1 = (NodeValue) args[0].itemAt(0);
-        NodeValue nv2 = (NodeValue) args[1].itemAt(0);
+    @Override
+    public Sequence eval(final Sequence[] args, final Sequence contextSequence) throws XPathException {
+        final NodeValue nv1 = (NodeValue) args[0].itemAt(0);
+        final NodeValue nv2 = (NodeValue) args[1].itemAt(0);
         if (nv1.getImplementationType() != NodeValue.PERSISTENT_NODE ||
-                nv2.getImplementationType() != NodeValue.PERSISTENT_NODE)
+                nv2.getImplementationType() != NodeValue.PERSISTENT_NODE) {
             throw new XPathException(this, "diff function only works on persistent documents stored in the db");
-        DocumentImpl doc1 = ((NodeProxy)nv1).getOwnerDocument();
-        DocumentImpl doc2 = ((NodeProxy)nv2).getOwnerDocument();
+        }
+        final DocumentImpl doc1 = ((NodeProxy)nv1).getOwnerDocument();
+        final DocumentImpl doc2 = ((NodeProxy)nv2).getOwnerDocument();
 
         context.pushDocumentContext();
         try {
-            MemTreeBuilder builder = context.getDocumentBuilder();
-            DocumentBuilderReceiver receiver = new DocumentBuilderReceiver(builder);
-            Properties properties = new Properties();
+            final MemTreeBuilder builder = context.getDocumentBuilder();
+            final DocumentBuilderReceiver receiver = new DocumentBuilderReceiver(builder);
+            final Properties properties = new Properties();
             properties.setProperty("document", doc1.getURI().toString());
             properties.setProperty("revision", "");
             properties.setProperty("date", new DateTimeValue(new Date()).getStringValue());
             properties.setProperty("user", context.getUser().getName());
 
-            int nodeNr = builder.startElement(VersioningTrigger.ELEMENT_VERSION, null);
+            final int nodeNr = builder.startElement(VersioningTrigger.ELEMENT_VERSION, null);
             VersioningTrigger.writeProperties(receiver, properties);
 
-            Diff diff = new StandardDiff(context.getBroker());
+            final Diff diff = new StandardDiff(context.getBroker());
             diff.diff(doc1, doc2);
             diff.diff2XML(receiver);
 
             builder.endElement();
             return builder.getDocument().getNode(nodeNr);
-        } catch (SAXException e) {
-            throw new XPathException(this, "Caugt error while generating diff: " + e.getMessage(), e);
-        } catch (DiffException e) {
+        } catch (final SAXException | DiffException e) {
             throw new XPathException(this, "Caugt error while generating diff: " + e.getMessage(), e);
         } finally {
             context.popDocumentContext();

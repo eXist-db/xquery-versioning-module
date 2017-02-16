@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://exist-db.org/ns/expath-pkg">
-    <jar>@app.name@-@app.version@.jar</jar>
-    <java>
-        <namespace>http://exist-db.org/xquery/versioning</namespace>
-        <class>org.exist.versioning.xquery.VersioningModule</class>
-    </java>
-</package>
-
