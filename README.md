@@ -5,10 +5,10 @@ This repository holds the for the eXist-db XQuery Versioning extension module.
 
 ### Building a EXPath Package for eXist-db ###
 
-Building requires that you have Java JDK version 8 and Maven 3 installed.
+Building requires that you have - Git, Java JDK version 8 and Maven 3 installed.
 
 ```bash
-$ https://www.github.com/exist-db/xquery-versioning-module.git
+$ git clone https://www.github.com/exist-db/xquery-versioning-module.git
 $ mvn package
 ```
 
