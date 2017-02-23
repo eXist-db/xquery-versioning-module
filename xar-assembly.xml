@@ -13,7 +13,7 @@
     <tag>versioning</tag>
     <category id="libs">Libraries</category>
     <category id="exist">eXist extensions</category>
-    <dependency processor="http://exist-db.org" semver-min="3.0.0" />
+    <dependency processor="http://exist-db.org" semver-min="3.0.4" />
     <dependencySets>
         <dependencySet>
             <groupId>${project.groupId}</groupId>

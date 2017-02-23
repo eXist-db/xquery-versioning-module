@@ -29,7 +29,6 @@ import org.exist.dom.persistent.NodeSet;
 import org.exist.dom.persistent.NewArrayNodeSet;
 import org.exist.numbering.NodeId;
 import org.exist.security.PermissionDeniedException;
-import org.exist.security.xacml.AccessContext;
 import org.exist.stax.EmbeddedXMLStreamReader;
 import org.exist.stax.ExtendedXMLStreamReader;
 import org.exist.storage.DBBroker;
@@ -343,7 +342,7 @@ public class Patch {
 		try {
 			changes = service.execute(broker, "declare namespace v=\"http://exist-db.org/versioning\";" +
 			        "doc('" + doc.getURI().toString() + "')/v:version/v:diff/*",
-			        Sequence.EMPTY_SEQUENCE, AccessContext.TEST);
+			        Sequence.EMPTY_SEQUENCE);
 		} catch (PermissionDeniedException e) {
 			throw new XPathException(e);
 		}

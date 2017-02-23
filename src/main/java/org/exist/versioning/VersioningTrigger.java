@@ -26,16 +26,14 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
 
 import javax.xml.transform.OutputKeys;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
 import org.exist.collections.triggers.FilteringTrigger;
@@ -116,28 +114,28 @@ public class VersioningTrigger extends FilteringTrigger {
 
     //XXX: is it safe to delete?
     @Deprecated
-    public void finish(final int event, final DBBroker broker, final Txn transaction, XmldbURI documentPath,
+    public void finish(final int event, final DBBroker brk, final Txn transaction, XmldbURI documentPath,
             final DocumentImpl document) {
 
     	if (documentPath == null || documentPath.startsWith(VERSIONS_COLLECTION)) {
 			return;
 		}
 
-    	final Subject activeSubject = broker.getSubject();
-    	try {
-    		broker.setSubject(broker.getBrokerPool().getSecurityManager().getSystemSubject());
+		final Subject activeSubject = brk.getCurrentSubject();
+		final BrokerPool brokerPool = brk.getBrokerPool();
+    	try(final DBBroker broker = brokerPool.get(Optional.of(brokerPool.getSecurityManager().getSystemSubject()))) {
 
     		if (vDoc != null && !removeLast) {
     			if(!(vDoc instanceof BinaryDocument)) {
     				try {
-    					vDoc.getUpdateLock().acquire(Lock.WRITE_LOCK);
+    					vDoc.getUpdateLock().acquire(Lock.LockMode.WRITE_LOCK);
     					vCollection.addDocument(transaction, broker, vDoc);
     					broker.storeXMLResource(transaction, vDoc);
-    				} catch (LockException | PermissionDeniedException e) {
-    					LOG.warn("Versioning trigger could not store base document: " + vDoc.getFileURI() +
+    				} catch (final LockException | PermissionDeniedException e) {
+    					LOG.error("Versioning trigger could not store base document: " + vDoc.getFileURI() +
     							e.getMessage(), e);
     				} finally {
-    					vDoc.getUpdateLock().release(Lock.WRITE_LOCK);
+    					vDoc.getUpdateLock().release(Lock.LockMode.WRITE_LOCK);
     				}
     			}
     		}
@@ -155,10 +153,10 @@ public class VersioningTrigger extends FilteringTrigger {
     				} else {
 						removeLast = true;
 					}
-    			} catch (IOException | TriggerException e) {
-    				LOG.warn("Caught exception in VersioningTrigger: " + e.getMessage(), e);
-    			} catch (PermissionDeniedException e) {
-    				LOG.warn("Permission denied in VersioningTrigger: " + e.getMessage(), e);
+    			} catch (final IOException | TriggerException e) {
+    				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+    			} catch (final PermissionDeniedException e) {
+    				LOG.error("Permission denied in VersioningTrigger: " + e.getMessage(), e);
     			}
 			}
 
@@ -229,21 +227,21 @@ public class VersioningTrigger extends FilteringTrigger {
 							}
 
 							final IndexInfo info = vCollection.validateXMLResource(transaction, broker, diffUri, editscript);
-							vCollection.store(transaction, broker, info, editscript, false);
+							vCollection.store(transaction, broker, info, editscript);
 						}
 					}
     			} catch (final Exception e) {
-    				LOG.warn("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+    				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
     			} finally {
     				vCollection.setTriggersEnabled(true);
     			}
     		}
-    	} finally {
-    		broker.setSubject(activeSubject);
-    	}
+		} catch (final EXistException e) {
+			LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+		}
     }
     
-    private void before(final DBBroker broker, final Txn transaction, final DocumentImpl document, final boolean remove)
+    private void before(final DBBroker brk, final Txn transaction, final DocumentImpl document, final boolean remove)
             throws TriggerException {
         this.documentPath = document.getURI();
 
@@ -251,11 +249,10 @@ public class VersioningTrigger extends FilteringTrigger {
 			return;
 		}
 
-        this.broker = broker;
-        final Subject activeSubject = broker.getSubject();
+        this.broker = brk;
 
-        try {
-            broker.setSubject(broker.getBrokerPool().getSecurityManager().getSystemSubject());
+		final BrokerPool brokerPool = brk.getBrokerPool();
+		try(final DBBroker broker = brokerPool.get(Optional.of(brokerPool.getSecurityManager().getSystemSubject()))) {
 
             final Collection collection = document.getCollection();
             if (collection.getURI().startsWith(VERSIONS_COLLECTION)) {
@@ -304,21 +301,19 @@ public class VersioningTrigger extends FilteringTrigger {
         } catch (final PermissionDeniedException e) {
             throw new TriggerException("Permission denied in VersioningTrigger: " + e.getMessage(), e);
         } catch (final Exception e) {
-            LOG.warn("Caught exception in VersioningTrigger: " + e.getMessage(), e);
-        } finally {
-            broker.setSubject(activeSubject);
+            LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
         }
     }
 
-    private void after(final DBBroker broker, final Txn transaction, final DocumentImpl document,
+    private void after(final DBBroker brk, final Txn transaction, final DocumentImpl document,
             final boolean remove) {
     	if (documentPath == null || documentPath.startsWith(VERSIONS_COLLECTION)) {
 			return;
 		}
 
-    	final Subject activeSubject = broker.getSubject();
-    	try {
-    		broker.setSubject(broker.getBrokerPool().getSecurityManager().getSystemSubject());
+		final Subject activeSubject = brk.getCurrentSubject();
+		final BrokerPool brokerPool = brk.getBrokerPool();
+		try(final DBBroker broker = brokerPool.get(Optional.of(brokerPool.getSecurityManager().getSystemSubject()))) {
 
     		if (!remove) {
     			try {
@@ -334,9 +329,9 @@ public class VersioningTrigger extends FilteringTrigger {
 						removeLast = true;
 					}
     			} catch (final IOException | TriggerException e) {
-    				LOG.warn("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+    				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
     			} catch (final PermissionDeniedException e) {
-    				LOG.warn("Permission denied in VersioningTrigger: " + e.getMessage(), e);
+    				LOG.error("Permission denied in VersioningTrigger: " + e.getMessage(), e);
     			}
 			}
 
@@ -408,18 +403,18 @@ public class VersioningTrigger extends FilteringTrigger {
 							}
 
 							final IndexInfo info = vCollection.validateXMLResource(transaction, broker, diffUri, editscript);
-							vCollection.store(transaction, broker, info, editscript, false);
+							vCollection.store(transaction, broker, info, editscript);
 						}
 					}
     			} catch (final Exception e) {
-    				LOG.warn("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+    				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
     			} finally {
     				vCollection.setTriggersEnabled(true);
     			}
     		}
-    	} finally {
-    		broker.setSubject(activeSubject);
-    	}
+		} catch (final EXistException e) {
+			LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
+		}
     }
 
     private Properties getVersionProperties(final long revision, final XmldbURI documentPath,
@@ -449,7 +444,7 @@ public class VersioningTrigger extends FilteringTrigger {
     private Collection getVersionsCollection(final DBBroker broker, final Txn transaction,
             final XmldbURI collectionPath) throws IOException, PermissionDeniedException, TriggerException {
         final XmldbURI path = VERSIONS_COLLECTION.append(collectionPath);
-        Collection collection = broker.openCollection(path, Lock.WRITE_LOCK);
+        Collection collection = broker.openCollection(path, Lock.LockMode.WRITE_LOCK);
         
         if (collection == null) {
             if(LOG.isDebugEnabled()) {
@@ -458,7 +453,7 @@ public class VersioningTrigger extends FilteringTrigger {
             collection = broker.getOrCreateCollection(transaction, path);
             broker.saveCollection(transaction, collection);
         } else {
-            transaction.registerLock(collection.getLock(), Lock.WRITE_LOCK);
+            transaction.registerLock(collection.getLock(), Lock.LockMode.WRITE_LOCK);
         }
         
         return collection;
@@ -474,7 +469,7 @@ public class VersioningTrigger extends FilteringTrigger {
                 try(final DataInputStream is = new DataInputStream(Files.newInputStream(f))) {
                     rev = is.readLong();
                 } catch (final IOException e) {
-                    LOG.warn("Failed to read versions.dbx: " + e.getMessage(), e);
+                    LOG.error("Failed to read versions.dbx: " + e.getMessage(), e);
                 }
             }
             
@@ -482,8 +477,8 @@ public class VersioningTrigger extends FilteringTrigger {
             
             try(final DataOutputStream os = new DataOutputStream(Files.newOutputStream(f))) {
                 os.writeLong(rev);
-            } catch (IOException e) {
-                LOG.warn("Failed to write versions.dbx: " + e.getMessage(), e);
+            } catch (final IOException e) {
+                LOG.error("Failed to write versions.dbx: " + e.getMessage(), e);
             }
 
             return rev;
@@ -520,9 +515,9 @@ public class VersioningTrigger extends FilteringTrigger {
                         throw new TriggerException("Possible version conflict detected for document: " + documentPath);
                     }
                 } catch (final XPathException | IOException | PermissionDeniedException e) {
-                    LOG.warn("Internal error in VersioningTrigger: " + e.getMessage(), e);
+                    LOG.error("Internal error in VersioningTrigger: " + e.getMessage(), e);
                 } catch (final NumberFormatException e) {
-                    LOG.warn("Illegal revision number in VersioningTrigger: " + documentRev);
+                    LOG.error("Illegal revision number in VersioningTrigger: " + documentRev);
                 }
 			}
         }

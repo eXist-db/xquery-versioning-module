@@ -14,7 +14,7 @@
 
     <groupId>org.exist-db.xquery.extensions</groupId>
     <artifactId>xquery-versioning-module</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
 
     <name>Versioning Module</name>
     <description>Versioning Module for eXist-db XQuery</description>
@@ -42,10 +42,10 @@
 
     <properties>
         <versioning.module.namespace>http://exist-db.org/xquery/versioning</versioning.module.namespace>
-        <exist.version>3.0.RC1</exist.version>
+        <exist.version>3.0</exist.version>
         <gnudiff.version>1.7</gnudiff.version>
 
-        <java.version>1.7</java.version>
+        <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <java-package-name>org.exist.versioning.xquery</java-package-name>

@@ -20,7 +20,6 @@
 package org.exist.versioning;
 
 import org.exist.security.PermissionDeniedException;
-import org.exist.security.xacml.AccessContext;
 import org.exist.source.StringSource;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
@@ -88,7 +87,7 @@ public class VersioningHelper {
         CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_CURRENT_REV_SOURCE);
         final XQueryContext context;
         if(compiled == null) {
-            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+            context = new XQueryContext(brokerPool);
         } else {
             context = compiled.getContext();
         }
@@ -125,7 +124,7 @@ public class VersioningHelper {
         final XQueryContext context;
         CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_CONFLICTING_REV_SOURCE);
         if(compiled == null) {
-            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+            context = new XQueryContext(brokerPool);
         } else {
             context = compiled.getContext();
         }
@@ -160,7 +159,7 @@ public class VersioningHelper {
         final XQueryContext context;
         CompiledXQuery compiled = xqueryPool.borrowCompiledXQuery(broker, GET_BASE_REV_FOR_KEY_SOURCE);
         if (compiled == null) {
-            context = new XQueryContext(brokerPool, AccessContext.VALIDATION_INTERNAL);
+            context = new XQueryContext(brokerPool);
         } else {
             context = compiled.getContext();
         }

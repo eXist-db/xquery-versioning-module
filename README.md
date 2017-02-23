@@ -12,7 +12,7 @@ $ git clone https://www.github.com/exist-db/xquery-versioning-module.git
 $ mvn package
 ```
 
-You will then find a file named similar to `target/xquery-versioning-module-1.0.xar`.
+You will then find a file named similar to `target/xquery-versioning-module-1.1.xar`.
 
 ### Example `collection.xconf` Trigger Configuration
 ```xml
