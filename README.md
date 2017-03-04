@@ -3,16 +3,39 @@
 
 This repository holds the for the eXist-db XQuery Versioning extension module.
 
-### Building a EXPath Package for eXist-db ###
+## Compiling
+Requirements: Java 8, Maven 3.
 
-Building requires that you have - Git, Java JDK version 8 and Maven 3 installed.
+1. `git clone https://github.com/eXist-db/xquery-versioning-module.git`
 
-```bash
-$ git clone https://www.github.com/exist-db/xquery-versioning-module.git
-$ mvn package
-```
+2. `cd xquery-versioning-module`
+
+3. `mvn package`
 
 You will then find a file named similar to `target/xquery-versioning-module-1.1.xar`.
+
+## Installation into eXist-db
+You can install the module into eXist-db in either one of two ways:
+1. As an EXPath Package (.xar file)
+2. Directly as a XQuery Java Extension Module (.jar file)
+
+### EXPath Package Installation into eXist-db (.xar)
+1. If you have compiled yourself (see above), you can take the `target/xquery-versioning-module-1.1.xar` file and upload it via eXist's EXPath Package Manager app in its Dashboard
+
+2. Otherwise, the latest release version will also be available from the eXist's EXPath Package Manager app in its Dashboard
+
+
+### Direct Installation into eXist-db (.jar)
+1. If you have compiled yourself (see above), copy `target/xquery-versioning-module-1.1-exist.jar` to `$EXIST_HOME/lib/user`.
+
+2. Edit `$EXIST_HOME/conf.xml` and add the following to the `<builtin-modules>`:
+
+    ```xml
+    <module uri="http://exist-db.org/xquery/versioning" class="org.exist.versioning.xquery.VersioningModule"/>
+    ```
+
+3. Restart eXist-db
+
 
 ### Example `collection.xconf` Trigger Configuration
 ```xml
