@@ -1,5 +1,5 @@
 # Versioning Module for eXist-db XQuery #
-[![Java 8](https://img.shields.io/badge/java-8-blue.svg)](http://java.oracle.com) [![License](https://img.shields.io/badge/license-GPL%201.0-blue.svg)](https://www.gnu.org/licenses/gpl-1.0.html)
+[![Build Status](https://travis-ci.org/eXist-db/xquery-versioning-module.png?branch=master)](https://travis-ci.org/eXist-db/xquery-versioning-module) [![Java 8](https://img.shields.io/badge/java-8-blue.svg)](http://java.oracle.com) [![License](https://img.shields.io/badge/license-GPL%201.0-blue.svg)](https://www.gnu.org/licenses/gpl-1.0.html)
 
 This repository holds the for the eXist-db XQuery Versioning extension module.
 
