@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -460,9 +459,9 @@ public class VersioningTrigger extends FilteringTrigger {
     }
 
     private long newRevision(final BrokerPool pool) {
-        final String dataDir = (String) pool.getConfiguration().getProperty(BrokerPool.PROPERTY_DATA_DIR);
+        final Path dataDir = (Path) pool.getConfiguration().getProperty(BrokerPool.PROPERTY_DATA_DIR);
         synchronized (latch) {
-            final Path f = Paths.get(dataDir, "versions.dbx");
+            final Path f = dataDir.resolve("versions.dbx");
             long rev = 0;
             
             if (Files.isReadable(f)) {
