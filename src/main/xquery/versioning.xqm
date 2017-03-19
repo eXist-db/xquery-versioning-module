@@ -88,14 +88,15 @@ declare function v:doc($doc as node(), $rev as xs:integer?) as node()* {
         if (not(doc-available($base-name))) then
             ()
         else if (exists($rev)) then
-            v:apply-patch(
-                doc($base-name),
-				for $version in
+            let $diff := (
+                    for $version in
                 	collection($version-collection)/v:version[v:properties[v:document = $doc-name][v:revision <= $rev]][v:diff]
-					order by xs:long($version/v:properties/v:revision) ascending
-				return
-					$version
-            )
+					order by xs:long($version/v:properties/v:revision) descending
+				    return
+					   $version
+				   )[1]
+            return
+                v:apply-patch(doc($base-name), $diff)
 		else
 			doc($base-name)
 };
