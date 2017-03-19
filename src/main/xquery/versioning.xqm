@@ -1,3 +1,5 @@
+xquery version "3.0";
+
 (:
  : Versioning Module for eXist-db XQuery
  : Copyright (C) 2008 eXist-db <exit-open@lists.sourceforge.net>
@@ -17,12 +19,14 @@
  : along with this program; if not, write to the Free Software
  : Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  :)
-module namespace v="http://exist-db.org/versioning"; 
+module namespace v = "http://exist-db.org/versioning"; 
 
-import module namespace version="http://exist-db.org/xquery/versioning"
-at "java:org.exist.versioning.xquery.VersioningModule";
-import module namespace util="http://exist-db.org/xquery/util";
-import module namespace xdb="http://exist-db.org/xquery/xmldb";
+import module namespace version = "http://exist-db.org/xquery/versioning"
+    at "java:org.exist.versioning.xquery.VersioningModule";
+import module namespace util = "http://exist-db.org/xquery/util";
+import module namespace xmldb = "http://exist-db.org/xquery/xmldb";
+
+declare variable $v:VERSIONS_COLLECTION := "/db/system/versions";
 
 (:
 	Return all revisions of the specified document 
@@ -34,9 +38,9 @@ import module namespace xdb="http://exist-db.org/xquery/xmldb";
 :)
 declare function v:revisions($doc as node()) as xs:integer* {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
-    for $version in collection($vCollection)//v:properties[v:document = $docName]
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
+    for $version in collection($version-collection)//v:properties[v:document = $doc-name]
     let $rev := xs:long($version/v:revision)
     order by $rev ascending
     return
@@ -53,9 +57,9 @@ declare function v:revisions($doc as node()) as xs:integer* {
 :)
 declare function v:versions($doc as node()) as element(v:version)* {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
-    for $version in collection($vCollection)/v:version[v:properties[v:document = $docName]]
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
+    for $version in collection($version-collection)/v:version[v:properties/v:document = $doc-name]
     order by xs:long($version/v:properties/v:revision) ascending
     return
         $version
@@ -77,24 +81,23 @@ declare function v:versions($doc as node()) as element(v:version)* {
 :)
 declare function v:doc($doc as node(), $rev as xs:integer?) as node()* {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
-    let $baseName := concat($vCollection, "/", $docName, ".base")
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
+    let $base-name := $version-collection || "/" || $doc-name || ".base"
     return
-        if (not(doc-available($baseName))) then
+        if (not(doc-available($base-name))) then
             ()
         else if (exists($rev)) then
             v:apply-patch(
-                doc($baseName),
+                doc($base-name),
 				for $version in
-                	collection($vCollection)/v:version[v:properties[v:document = $docName]
-                    	[v:revision <= $rev]][v:diff]
+                	collection($version-collection)/v:version[v:properties[v:document = $doc-name][v:revision <= $rev]][v:diff]
 					order by xs:long($version/v:properties/v:revision) ascending
 				return
 					$version
             )
 		else
-			doc($baseName)
+			doc($base-name)
 };
 
 (:~
@@ -118,16 +121,17 @@ declare function v:apply-patch($doc as node(), $diffs as element(v:version)*) {
 	@param $rev a valid revision number
 :)
 declare function v:diff($doc as node(), $rev as xs:integer) as element(v:version)? {
-	let $base := v:doc($doc, $rev)
+    let $base := v:doc($doc, $rev)
 	return
 		if (empty($base)) then
 			()
 		else
-			let $col := xdb:create-collection("/db/system/versions", "temp")
-			let $stored := xdb:store("/db/system/versions/temp", util:document-name($doc), $base)
+			let $col := xmldb:create-collection($v:VERSIONS_COLLECTION, "temp")
+			let $stored := xmldb:store($col, util:document-name($doc), $base)
 			let $diff := version:diff(doc($stored), $doc)
-			let $deleted := xdb:remove("/db/system/versions/temp", util:document-name($doc))
-			return $diff
+			let $deleted := xmldb:remove($col, util:document-name($doc))
+			return
+			     $diff
 };
 
 (:~
@@ -139,8 +143,8 @@ declare function v:diff($doc as node(), $rev as xs:integer) as element(v:version
 :)
 declare function v:annotate($doc as node(), $rev as xs:integer) {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
     let $revisions := v:revisions($doc)
     let $p := index-of($revisions, $rev)
 	return
@@ -149,17 +153,12 @@ declare function v:annotate($doc as node(), $rev as xs:integer) {
 		else
 			let $previous := 
 				if ($p eq 1) then
-					doc(concat($vCollection, "/", $docName, ".base"))
+					doc($version-collection || "/" || $doc-name || ".base")
 				else
 					v:doc($doc, $revisions[$p - 1])
-			let $diff := collection($vCollection)/v:version[
-							v:properties[v:document = $docName]
-							[v:revision = $rev]
-						]			
+			let $diff := collection($version-collection)/v:version[v:properties[v:document = $doc-name][v:revision = $rev]]
 			return
-				version:annotate(
-					$previous, $diff 
-				)
+				version:annotate($previous, $diff)
 };
 
 (:~
@@ -185,12 +184,10 @@ declare function v:annotate($doc as node(), $rev as xs:integer) {
 :)
 declare function v:find-newer-revision($doc as node(), $base as xs:integer, $key as xs:string) as element(v:version)? {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
 	let $newer := 
-		for $v in collection($vCollection)/v:version[
-			v:properties[v:document = $docName][v:revision > $base][v:key != $key]
-		]
+		for $v in collection($version-collection)/v:version[v:properties[v:document = $doc-name][v:revision > $base][v:key != $key]]
     	order by xs:long($v/v:properties/v:revision) descending
 		return $v
 	return $newer[1]
@@ -205,14 +202,14 @@ declare function v:find-newer-revision($doc as node(), $base as xs:integer, $key
 :)
 declare function v:history($doc as node()) as element(v:history) {
     let $collection := util:collection-name($doc)
-    let $docName := util:document-name($doc)
-    let $vCollection := concat("/db/system/versions", $collection)
+    let $doc-name := util:document-name($doc)
+    let $version-collection := concat($v:VERSIONS_COLLECTION, $collection)
 	return
 		<v:history>
 			<v:document>{base-uri($doc)}</v:document>
 			<v:revisions>
 			{
-				for $v in collection($vCollection)//v:properties[v:document = $docName]
+				for $v in collection($version-collection)//v:properties[v:document = $doc-name]
 				order by xs:long($v/v:revision) ascending
 				return
 					<v:revision rev="{$v/v:revision}">
