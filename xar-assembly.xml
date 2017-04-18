@@ -26,13 +26,14 @@
             <version>${gnudiff.version}</version>
         </dependencySet>
     </dependencySets>
-    <fileSets>
-        <fileSet>
+    <xquerySets>
+        <xquerySet>
+            <namespace>http://exist-db.org/versioning</namespace>
             <directory>${basedir}/src/main/xquery</directory>
             <includes>
                 <include>versioning.xqm</include>
             </includes>
             <outputDirectory>content</outputDirectory>
-        </fileSet>
-    </fileSets>
+        </xquerySet>
+    </xquerySets>
 </package>
