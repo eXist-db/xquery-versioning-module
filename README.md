@@ -1,7 +1,7 @@
 # Versioning Module for eXist-db XQuery #
 [![Build Status](https://travis-ci.org/eXist-db/xquery-versioning-module.png?branch=master)](https://travis-ci.org/eXist-db/xquery-versioning-module) [![Java 8](https://img.shields.io/badge/java-8-blue.svg)](http://java.oracle.com) [![License](https://img.shields.io/badge/license-GPL%201.0-blue.svg)](https://www.gnu.org/licenses/gpl-1.0.html)
 
-This repository holds the for the eXist-db XQuery Versioning extension module.
+This repository holds the source code for the eXist-db XQuery Versioning extension module.
 
 ## Compiling
 Requirements: Java 8, Maven 3.
@@ -12,7 +12,7 @@ Requirements: Java 8, Maven 3.
 
 3. `mvn package`
 
-You will then find a file named similar to `target/xquery-versioning-module-1.1.3.xar`.
+You will then find a file named similar to `target/xquery-versioning-module-1.1.4.xar`.
 
 ## Installation into eXist-db
 You can install the module into eXist-db in either one of two ways:
@@ -20,13 +20,13 @@ You can install the module into eXist-db in either one of two ways:
 2. Directly as a XQuery Java Extension Module (.jar file)
 
 ### EXPath Package Installation into eXist-db (.xar)
-1. If you have compiled yourself (see above), you can take the `target/xquery-versioning-module-1.1.3.xar` file and upload it via eXist's EXPath Package Manager app in its Dashboard
+1. If you have compiled yourself (see above), you can take the `target/xquery-versioning-module-1.1.4.xar` file and upload it via eXist's EXPath Package Manager app in its Dashboard
 
 2. Otherwise, the latest release version will also be available from the eXist's EXPath Package Manager app in its Dashboard
 
 
 ### Direct Installation into eXist-db (.jar)
-1. If you have compiled yourself (see above), copy `target/xquery-versioning-module-1.1.3-exist.jar` to `$EXIST_HOME/lib/user`.
+1. If you have compiled yourself (see above), copy `target/xquery-versioning-module-1.1.4-exist.jar` to `$EXIST_HOME/lib/user`.
 
 2. Edit `$EXIST_HOME/conf.xml` and add the following to the `<builtin-modules>`:
 
