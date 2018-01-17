@@ -26,6 +26,12 @@
             <version>${gnudiff.version}</version>
         </dependencySet>
     </dependencySets>
+    <components>
+        <resource>
+            <public-uri>${versioning.module.namespace}</public-uri>
+            <file>${versioning.module.java.package}.${versioning.module.java.classname}</file>
+        </resource>
+    </components>
     <xquerySets>
         <xquerySet>
             <namespace>http://exist-db.org/versioning</namespace>
