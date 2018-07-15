@@ -98,15 +98,14 @@ public class VersioningTrigger extends FilteringTrigger {
     public void configure(final DBBroker broker, final Collection parent, final Map<String, List<?>> parameters)
     throws TriggerException {
         super.configure(broker, parent, parameters);
-        
-        if (parameters != null) {
-			final String allowOverwrite = (String) parameters.get(PARAM_OVERWRITE).get(0);
-            if (allowOverwrite != null) {
-				checkForConflicts = allowOverwrite.equals("false") || allowOverwrite.equals("no");
-			}
-        }
 
-        if(LOG.isDebugEnabled()) {
+        checkForConflicts = Optional.ofNullable(parameters).flatMap(params ->
+			Optional.ofNullable(params.get(PARAM_OVERWRITE))
+					.map(list -> (String)list.get(0))
+					.map(value -> value.equals("false") || value.equals("no"))
+			).orElse(false);
+
+        if (LOG.isDebugEnabled()) {
 			LOG.debug("checkForConflicts: " + checkForConflicts);
 		}
     }
