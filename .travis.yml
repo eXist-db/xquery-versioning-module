@@ -3,7 +3,7 @@ sudo: false
 language: java
 
 jdk:
-    - oraclejdk8
+    - openjdk8
 
 # TEMPORARY - see https://binkley.blogspot.com/2015/10/struggling-with-travis-ci-and-maven-33.html
 before_install:
