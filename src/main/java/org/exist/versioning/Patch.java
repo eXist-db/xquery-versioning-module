@@ -220,15 +220,24 @@ public class Patch {
                         char[] ch = buf.toString().toCharArray();
                         receiver.comment(ch, 0, ch.length);
                     } else if ("start".equals(reader.getLocalName())) {
-                        String namespace = reader.getAttributeValue("", "namespace");
-                        String name = reader.getAttributeValue("", "name");
-                        receiver.startElement(new QName(QName.extractLocalName(name), namespace, QName.extractPrefix(name)), null);
-                        if (annotate)
-                            receiver.attribute(ATTR_CHANGE, "tag-" + changeMessage);
+                        final String namespace = reader.getAttributeValue("", "namespace");
+                        final String name = reader.getAttributeValue("", "name");
+                        try {
+                            receiver.startElement(new QName(QName.extractLocalName(name), namespace, QName.extractPrefix(name)), null);
+                            if (annotate) {
+                                receiver.attribute(ATTR_CHANGE, "tag-" + changeMessage);
+                            }
+                        } catch (final QName.IllegalQNameException e) {
+                            throw new SAXException(e.getMessage(), e);
+                        }
                     } else if ("end".equals(reader.getLocalName())) {
-                        String namespace = reader.getAttributeValue("", "namespace");
-                        String name = reader.getAttributeValue("", "name");
-                        receiver.endElement(new QName(QName.extractLocalName(name), namespace, QName.extractPrefix(name)));
+                        final String namespace = reader.getAttributeValue("", "namespace");
+                        final String name = reader.getAttributeValue("", "name");
+                        try {
+                            receiver.endElement(new QName(QName.extractLocalName(name), namespace, QName.extractPrefix(name)));
+                        } catch (final QName.IllegalQNameException e) {
+                            throw new SAXException(e.getMessage(), e);
+                        }
                     }
                 }
             } else {

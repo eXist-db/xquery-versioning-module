@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.Map.Entry;
 
+import javax.xml.XMLConstants;
 import javax.xml.transform.OutputKeys;
 
 import org.apache.logging.log4j.LogManager;
@@ -35,7 +36,7 @@ import org.apache.logging.log4j.Logger;
 import org.exist.EXistException;
 import org.exist.collections.Collection;
 import org.exist.collections.IndexInfo;
-import org.exist.collections.triggers.FilteringTrigger;
+import org.exist.collections.triggers.SAXTrigger;
 import org.exist.collections.triggers.TriggerException;
 import org.exist.dom.persistent.BinaryDocument;
 import org.exist.dom.persistent.DocumentImpl;
@@ -46,6 +47,8 @@ import org.exist.security.Subject;
 import org.exist.storage.BrokerPool;
 import org.exist.storage.DBBroker;
 import org.exist.storage.lock.Lock;
+import org.exist.storage.lock.LockManager;
+import org.exist.storage.lock.ManagedDocumentLock;
 import org.exist.storage.txn.Txn;
 import org.exist.util.LockException;
 import org.exist.util.serializer.Receiver;
@@ -58,7 +61,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
-public class VersioningTrigger extends FilteringTrigger {
+public class VersioningTrigger extends SAXTrigger {
 
     public final static Logger LOG = LogManager.getLogger(VersioningTrigger.class);
 
@@ -76,7 +79,7 @@ public class VersioningTrigger extends FilteringTrigger {
     public final static QName ELEMENT_REMOVED = new QName("removed", StandardDiff.NAMESPACE, StandardDiff.PREFIX);
     public final static QName PROPERTIES_ELEMENT = new QName("properties", StandardDiff.NAMESPACE, StandardDiff.PREFIX);
     public final static QName ELEMENT_REPLACED_BINARY = new QName("replaced-binary", StandardDiff.NAMESPACE, StandardDiff.PREFIX);
-    public final static QName ATTRIBUTE_REF = new QName("ref");
+    public final static QName ATTRIBUTE_REF = new QName("ref", XMLConstants.NULL_NS_URI);
     public final static QName ELEMENT_REPLACED_XML = new QName("replaced-xml", StandardDiff.NAMESPACE, StandardDiff.PREFIX);
 
     private final static Object latch = new Object();
@@ -95,9 +98,9 @@ public class VersioningTrigger extends FilteringTrigger {
     private boolean checkForConflicts = false;
 
     @Override
-    public void configure(final DBBroker broker, final Collection parent, final Map<String, List<?>> parameters)
+    public void configure(final DBBroker broker, final Txn transaction, final Collection parent, final Map<String, List<?>> parameters)
     throws TriggerException {
-        super.configure(broker, parent, parameters);
+        super.configure(broker, transaction, parent, parameters);
 
         checkForConflicts = Optional.ofNullable(parameters).flatMap(params ->
 			Optional.ofNullable(params.get(PARAM_OVERWRITE))
@@ -121,19 +124,17 @@ public class VersioningTrigger extends FilteringTrigger {
 
 		final Subject activeSubject = brk.getCurrentSubject();
 		final BrokerPool brokerPool = brk.getBrokerPool();
-    	try(final DBBroker broker = brokerPool.get(Optional.of(brokerPool.getSecurityManager().getSystemSubject()))) {
+		final LockManager lockManager = brokerPool.getLockManager();
+    	try (final DBBroker broker = brokerPool.get(Optional.of(brokerPool.getSecurityManager().getSystemSubject()))) {
 
     		if (vDoc != null && !removeLast) {
     			if(!(vDoc instanceof BinaryDocument)) {
-    				try {
-    					vDoc.getUpdateLock().acquire(Lock.LockMode.WRITE_LOCK);
+    				try (final ManagedDocumentLock documentLock = lockManager.acquireDocumentWriteLock(vDoc.getURI())) {
     					vCollection.addDocument(transaction, broker, vDoc);
     					broker.storeXMLResource(transaction, vDoc);
     				} catch (final LockException | PermissionDeniedException e) {
     					LOG.error("Versioning trigger could not store base document: " + vDoc.getFileURI() +
     							e.getMessage(), e);
-    				} finally {
-    					vDoc.getUpdateLock().release(Lock.LockMode.WRITE_LOCK);
     				}
     			}
     		}
@@ -166,7 +167,7 @@ public class VersioningTrigger extends FilteringTrigger {
 					}
     				final XmldbURI diffUri = XmldbURI.createInternal(documentPath.toString() + '.' + revision);
 
-    				vCollection.setTriggersEnabled(false);
+    				broker.setTriggersEnabled(false);
 
     				try(StringWriter writer = new StringWriter()) {
 						final SAXSerializer sax = (SAXSerializer) SerializerPool.getInstance().borrowObject(
@@ -231,7 +232,7 @@ public class VersioningTrigger extends FilteringTrigger {
     			} catch (final Exception e) {
     				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
     			} finally {
-    				vCollection.setTriggersEnabled(true);
+    				broker.setTriggersEnabled(true);
     			}
     		}
 		} catch (final EXistException e) {
@@ -287,8 +288,10 @@ public class VersioningTrigger extends FilteringTrigger {
                 broker.copyResource(transaction, document, vCollection, binUri);
                 vDoc = vCollection.getDocument(broker, binUri);
             } else {
-                vDoc = new DocumentImpl(broker.getBrokerPool(), vCollection, XmldbURI.createInternal(vFileName));
-                vDoc.copyOf(document, true);
+
+            	final int vDocId = broker.getNextResourceId(transaction);
+                vDoc = new DocumentImpl(broker.getBrokerPool(), vCollection, vDocId, XmldbURI.createInternal(vFileName));
+                vDoc.copyOf(broker, document, (DocumentImpl)null);
                 vDoc.copyChildren(document);
             }
             
@@ -342,7 +345,7 @@ public class VersioningTrigger extends FilteringTrigger {
     				}
     				final XmldbURI diffUri = XmldbURI.createInternal(documentPath.toString() + '.' + revision);
 
-    				vCollection.setTriggersEnabled(false);
+    				broker.setTriggersEnabled(false);
 
     				try(final StringWriter writer = new StringWriter()) {
 						final SAXSerializer sax = (SAXSerializer) SerializerPool.getInstance().borrowObject(
@@ -407,7 +410,7 @@ public class VersioningTrigger extends FilteringTrigger {
     			} catch (final Exception e) {
     				LOG.error("Caught exception in VersioningTrigger: " + e.getMessage(), e);
     			} finally {
-    				vCollection.setTriggersEnabled(true);
+    				broker.setTriggersEnabled(true);
     			}
     		}
 		} catch (final EXistException e) {
@@ -442,19 +445,32 @@ public class VersioningTrigger extends FilteringTrigger {
     private Collection getVersionsCollection(final DBBroker broker, final Txn transaction,
             final XmldbURI collectionPath) throws IOException, PermissionDeniedException, TriggerException {
         final XmldbURI path = VERSIONS_COLLECTION.append(collectionPath);
-        Collection collection = broker.openCollection(path, Lock.LockMode.WRITE_LOCK);
-        
-        if (collection == null) {
-            if(LOG.isDebugEnabled()) {
-				LOG.debug("Creating versioning collection: " + path);
+        Collection collection = null;
+        try {
+			collection = broker.openCollection(path, Lock.LockMode.WRITE_LOCK);
+
+			if (collection == null) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Creating versioning collection: " + path);
+				}
+				collection = broker.getOrCreateCollection(transaction, path);
+				broker.saveCollection(transaction, collection);
+			} else {
+				final LockManager lockManager = broker.getBrokerPool().getLockManager();
+				final XmldbURI collectionUri = collection.getURI();
+				try {
+					transaction.acquireCollectionLock(() -> lockManager.acquireCollectionWriteLock(collectionUri));
+				} catch (final LockException e) {
+					throw new IOException(e.getMessage(), e);
+				}
 			}
-            collection = broker.getOrCreateCollection(transaction, path);
-            broker.saveCollection(transaction, collection);
-        } else {
-            transaction.registerLock(collection.getLock(), Lock.LockMode.WRITE_LOCK);
-        }
-        
-        return collection;
+
+			return collection;
+		} finally {
+        	if (collection != null) {
+        		collection.close();
+			}
+		}
     }
 
     private long newRevision(final BrokerPool pool) {

@@ -82,7 +82,7 @@ public class DiffFunction extends BasicFunction {
             properties.setProperty("document", doc1.getURI().toString());
             properties.setProperty("revision", "");
             properties.setProperty("date", new DateTimeValue(new Date()).getStringValue());
-            properties.setProperty("user", context.getUser().getName());
+            properties.setProperty("user", context.getSubject().getName());
 
             final int nodeNr = builder.startElement(VersioningTrigger.ELEMENT_VERSION, null);
             VersioningTrigger.writeProperties(receiver, properties);
