@@ -40,7 +40,7 @@
     </scm>
 
     <properties>
-        <exist.version>5.2.0</exist.version>
+        <exist.version>6.2.0</exist.version>
         <gnudiff.version>1.7</gnudiff.version>
         <versioning.module.namespace>http://exist-db.org/xquery/versioning</versioning.module.namespace>
         <versioning.module.java.package>org.exist.versioning.xquery</versioning.module.java.package>
